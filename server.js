@@ -9,7 +9,6 @@ const pdfjs = require('pdfjs-dist/legacy/build/pdf');
 const app = express();
 const PORT = process.env.PORT || 3000;
  
-// NO usar worker externo - usar sync
 app.use(cors());
 app.use(express.static(path.join(__dirname)));
  
@@ -53,25 +52,32 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
         // Convertir Buffer a Uint8Array
         const uint8Array = new Uint8Array(pdfBuffer);
  
-        // Cargar PDF CON workerSrc local
+        // Cargar PDF
         const pdf = await pdfjs.getDocument({ 
             data: uint8Array,
-            disableWorker: true  // ⭐ Usar el mismo thread
+            disableWorker: true
         }).promise;
         
         const numPages = pdf.numPages;
         console.log(`PDF con ${numPages} páginas procesado`);
  
         const images = [];
-        const scale = 2;
+        
+        // ⭐ ESCALA MÁS ALTA PARA CAPTURAR TODO SIN RECORTES
+        const scale = 3;  // Aumentado de 2 a 3 para mejor calidad
  
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
             try {
                 const page = await pdf.getPage(pageNum);
                 const viewport = page.getViewport({ scale });
  
+                // ⭐ Canvas con el TAMAÑO COMPLETO de la página escalada
                 const canvas = createCanvas(viewport.width, viewport.height);
                 const context = canvas.getContext('2d');
+ 
+                // ⭐ FONDO BLANCO para asegurar que se vea todo
+                context.fillStyle = 'white';
+                context.fillRect(0, 0, viewport.width, viewport.height);
  
                 const renderContext = {
                     canvasContext: context,
@@ -80,7 +86,8 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
  
                 await page.render(renderContext).promise;
  
-                const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
+                // ⭐ Convertir a JPEG con máxima calidad
+                const buffer = canvas.toBuffer('image/jpeg', { quality: 0.98 });
                 const base64 = buffer.toString('base64');
  
                 images.push({
@@ -90,7 +97,7 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
                     size: buffer.length
                 });
  
-                console.log(`✓ Página ${pageNum} procesada`);
+                console.log(`✓ Página ${pageNum} procesada (${(buffer.length / 1024).toFixed(1)} KB)`);
             } catch (err) {
                 console.error(`Error en página ${pageNum}:`, err.message);
             }
