@@ -5,7 +5,6 @@ const fs = require('fs');
 const cors = require('cors');
 const { createCanvas } = require('canvas');
 const pdfjs = require('pdfjs-dist/legacy/build/pdf');
-const sharp = require('sharp');
  
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,12 +14,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 app.use(cors());
 app.use(express.static(path.join(__dirname)));
  
-// RUTA RAÍZ
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
  
-// CONFIGURAR MULTER
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadsDir = 'uploads';
@@ -45,7 +42,6 @@ const upload = multer({
     }
 });
  
-// ENDPOINT PARA EXTRAER IMÁGENES
 app.post('/extract-images', upload.single('pdf'), async (req, res) => {
     try {
         if (!req.file) {
@@ -54,9 +50,12 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
  
         const pdfPath = path.join(__dirname, req.file.path);
         const pdfBuffer = fs.readFileSync(pdfPath);
+        
+        // ⭐ CONVERTIR Buffer a Uint8Array
+        const uint8Array = new Uint8Array(pdfBuffer);
  
         // Cargar PDF
-        const pdf = await pdfjs.getDocument({ data: pdfBuffer }).promise;
+        const pdf = await pdfjs.getDocument({ data: uint8Array }).promise;
         const numPages = pdf.numPages;
  
         console.log(`PDF con ${numPages} páginas procesado`);
@@ -64,7 +63,6 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
         const images = [];
         const scale = 2;
  
-        // Procesar cada página
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
             try {
                 const page = await pdf.getPage(pageNum);
@@ -80,7 +78,6 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
  
                 await page.render(renderContext).promise;
  
-                // Convertir canvas a buffer
                 const buffer = canvas.toBuffer('image/jpeg', { quality: 0.95 });
                 const base64 = buffer.toString('base64');
  
@@ -91,13 +88,12 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
                     size: buffer.length
                 });
  
-                console.log(`Página ${pageNum} procesada`);
+                console.log(`Página ${pageNum} procesada ✓`);
             } catch (err) {
-                console.error(`Error en página ${pageNum}:`, err);
+                console.error(`Error en página ${pageNum}:`, err.message);
             }
         }
  
-        // Limpiar archivo
         fs.unlinkSync(pdfPath);
  
         if (images.length === 0) {
@@ -113,22 +109,20 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
         });
  
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error:', error.message);
         if (req.file) {
             try {
                 fs.unlinkSync(path.join(__dirname, req.file.path));
             } catch (e) {}
         }
-        res.status(500).json({ error: 'Error al procesar PDF: ' + error.message });
+        res.status(500).json({ error: 'Error: ' + error.message });
     }
 });
  
-// HEALTH CHECK
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
  
-// INICIAR SERVIDOR
 app.listen(PORT, () => {
     console.log(`🚀 Servidor en puerto ${PORT}`);
 });
