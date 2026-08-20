@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor de Imágenes PDF - Backend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .upload-zone {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            margin-bottom: 30px;
+        }
+
+        .upload-zone:hover {
+            border-color: #764ba2;
+            background: #efefff;
+        }
+
+        .upload-zone.dragover {
+            border-color: #764ba2;
+            background: #e8e8ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .upload-zone h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .upload-zone p {
+            color: #888;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .images-section {
+            display: none;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .image-count-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .image-card {
+            background: #f8f9ff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            display: block;
+            background: #fff;
+            padding: 8px;
+        }
+
+        .image-info {
+            padding: 12px;
+            border-top: 1px solid #ddd;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .image-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .image-size {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-top: 1px solid #ddd;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #764ba2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        .empty-state {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .error-message {
+            display: none;
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .success-message {
+            display: none;
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #90EE90;
+            color: #228B22;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-badge.error {
+            background: #FFB6C6;
+            color: #C41E3A;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Extractor de Imágenes PDF</h1>
+            <p>Backend potente - Extrae imágenes con precisión</p>
+            <div class="status-badge" id="statusBadge">✓ Backend activo</div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📁</div>
+            <h3>Arrastra un PDF aquí</h3>
+            <p>O haz clic para seleccionar</p>
+        </div>
+
+        <input type="file" id="fileInput" accept=".pdf">
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Extrayendo imágenes...</div>
+        </div>
+
+        <div class="images-section" id="imagesSection">
+            <div class="section-title">
+                Imágenes encontradas
+                <span class="image-count-badge" id="imageCount">0</span>
+            </div>
+
+            <div class="images-grid" id="imagesGrid"></div>
+
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">😕</div>
+                <p>No se encontraron imágenes</p>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="downloadAllBtn" onclick="downloadAllImages()">
+                    ⬇️ Descargar todas
+                </button>
+                <button class="btn btn-secondary" onclick="resetApp()">
+                    ↻ Cargar otro PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let extractedImages = [];
+
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/health');
+                if (!response.ok) throw new Error();
+                document.getElementById('statusBadge').textContent = '✓ Backend activo';
+            } catch (error) {
+                showError('⚠️ Backend no disponible. Ejecuta: npm install && npm start');
+                document.getElementById('statusBadge').textContent = '✗ Backend desconectado';
+                document.getElementById('statusBadge').classList.add('error');
+            }
+        });
+
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) uploadPDF(e.target.files[0]);
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) uploadPDF(e.dataTransfer.files[0]);
+        });
+
+        async function uploadPDF(file) {
+            const uploadZone = document.getElementById('uploadZone');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressText = document.getElementById('progressText');
+            const progressFill = document.getElementById('progressFill');
+
+            uploadZone.style.display = 'none';
+            progressContainer.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                progressText.textContent = 'Subiendo PDF...';
+                progressFill.style.width = '30%';
+
+                const response = await fetch('/extract-images', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressFill.style.width = '70%';
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error en el servidor');
+                }
+
+                const data = await response.json();
+                progressFill.style.width = '100%';
+                progressText.textContent = `✓ ${data.imageCount} imágenes extraídas`;
+
+                extractedImages = data.images;
+                setTimeout(displayImages, 500);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('❌ Error: ' + error.message);
+                uploadZone.style.display = 'block';
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        function displayImages() {
+            const progressContainer = document.getElementById('progressContainer');
+            const imagesSection = document.getElementById('imagesSection');
+            const imagesGrid = document.getElementById('imagesGrid');
+            const imageCount = document.getElementById('imageCount');
+            const emptyState = document.getElementById('emptyState');
+
+            progressContainer.style.display = 'none';
+            imagesSection.style.display = 'block';
+
+            if (extractedImages.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            imageCount.textContent = extractedImages.length;
+            imagesGrid.innerHTML = '';
+
+            extractedImages.forEach((img, index) => {
+                const card = document.createElement('div');
+                card.className = 'image-card';
+
+                const thumbnail = document.createElement('img');
+                thumbnail.className = 'image-preview';
+                thumbnail.src = img.base64;
+
+                const info = document.createElement('div');
+                info.className = 'image-info';
+                info.innerHTML = `<div class="image-name">Página ${img.page}</div><div class="image-size">${(img.size / 1024).toFixed(1)} KB</div>`;
+
+                const btn = document.createElement('button');
+                btn.className = 'download-btn';
+                btn.textContent = '⬇️ JPEG';
+                btn.onclick = () => downloadImage(index);
+
+                card.appendChild(thumbnail);
+                card.appendChild(info);
+                card.appendChild(btn);
+                imagesGrid.appendChild(card);
+            });
+        }
+
+        function downloadImage(index) {
+            const img = extractedImages[index];
+            const link = document.createElement('a');
+            link.href = img.base64;
+            link.download = `imagen-pagina-${img.page}.jpg`;
+            link.click();
+        }
+
+        function downloadAllImages() {
+            extractedImages.forEach((img, index) => {
+                setTimeout(() => downloadImage(index), index * 300);
+            });
+            showSuccess(`✅ Descargando ${extractedImages.length} imágenes...`);
+        }
+
+        function resetApp() {
+            extractedImages = [];
+            document.getElementById('uploadZone').style.display = 'block';
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('imagesSection').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        }
+
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 8000);
+        }
+
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 4000);
+        }
+    </script>
+</body>
+</html>
