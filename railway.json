@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "config": {
+      "nixpacks": {
+        "packages": ["poppler"]
+      }
+    }
+  }
+}
