@@ -9,13 +9,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-// Servir index.html en la raíz
+
+// ⭐ SERVIR ARCHIVOS ESTÁTICOS (index.html, css, js)
+app.use(express.static(path.join(__dirname)));
+
+// ⭐ RUTA RAÍZ - Servir index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.use(express.static('.'));
-
+// CONFIGURAR MULTER
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadsDir = 'uploads';
@@ -40,6 +43,7 @@ const upload = multer({
     }
 });
 
+// ENDPOINT PARA EXTRAER IMÁGENES
 app.post('/extract-images', upload.single('pdf'), async (req, res) => {
     try {
         if (!req.file) {
@@ -55,13 +59,11 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
 
         console.log(`Procesando: ${pdfPath}`);
 
-        // Usar pdfimages (Poppler) directamente
         return new Promise((resolve) => {
             const pdfimages = spawn('pdfimages', ['-jpeg', pdfPath, path.join(outputDir, 'page')]);
             
             pdfimages.on('close', (code) => {
                 if (code === 0) {
-                    // Buscar imágenes generadas
                     const files = fs.readdirSync(outputDir).filter(f => f.endsWith('.jpg'));
                     
                     if (files.length === 0) {
@@ -115,10 +117,12 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
     }
 });
 
+// HEALTH CHECK
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// INICIAR SERVIDOR
 app.listen(PORT, () => {
     console.log(`🚀 Servidor en puerto ${PORT}`);
 });
