@@ -9,8 +9,7 @@ const pdfjs = require('pdfjs-dist/legacy/build/pdf');
 const app = express();
 const PORT = process.env.PORT || 3000;
  
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
- 
+// NO usar worker externo - usar sync
 app.use(cors());
 app.use(express.static(path.join(__dirname)));
  
@@ -51,13 +50,16 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
         const pdfPath = path.join(__dirname, req.file.path);
         const pdfBuffer = fs.readFileSync(pdfPath);
         
-        // ⭐ CONVERTIR Buffer a Uint8Array
+        // Convertir Buffer a Uint8Array
         const uint8Array = new Uint8Array(pdfBuffer);
  
-        // Cargar PDF
-        const pdf = await pdfjs.getDocument({ data: uint8Array }).promise;
+        // Cargar PDF CON workerSrc local
+        const pdf = await pdfjs.getDocument({ 
+            data: uint8Array,
+            disableWorker: true  // ⭐ Usar el mismo thread
+        }).promise;
+        
         const numPages = pdf.numPages;
- 
         console.log(`PDF con ${numPages} páginas procesado`);
  
         const images = [];
@@ -88,7 +90,7 @@ app.post('/extract-images', upload.single('pdf'), async (req, res) => {
                     size: buffer.length
                 });
  
-                console.log(`Página ${pageNum} procesada ✓`);
+                console.log(`✓ Página ${pageNum} procesada`);
             } catch (err) {
                 console.error(`Error en página ${pageNum}:`, err.message);
             }
